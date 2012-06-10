@@ -1,0 +1,52 @@
+﻿<phone:PhoneApplicationPage
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls" 
+    x:Class="GPS_Tracker.MainPage"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    mc:Ignorable="d" d:DesignHeight="768" d:DesignWidth="480"
+    shell:SystemTray.IsVisible="True" Loaded="PhoneApplicationPage_Loaded">
+
+    <!--LayoutRoot 是包含所有页面内容的根网格-->
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <ProgressBar Name="ProgressBar_Downloading" HorizontalAlignment="Left" Height="10" VerticalAlignment="Top" Width="480" IsIndeterminate="True" Visibility="Collapsed" />
+        <controls:Pivot Title="GPS Tracker" LoadedPivotItem="Pivot_LoadedPivotItem">
+            <controls:PivotItem x:Name="Track" Header="Track">
+                <Grid/>
+            </controls:PivotItem>
+            <controls:PivotItem x:Name="History" Header="History">
+                <Grid>
+                    <ListBox Padding="15,0,0,0" FontSize="32">
+                        <ListBoxItem Content="2012-6-6 18:22  2.2KM" />
+                        <ListBoxItem Content="2012-6-7 16:24  3KM" />
+                        <ListBoxItem Content="2012-6-8 11:03  2.5KM" />
+                        <ListBoxItem Content="2012-6-9 5:22  1KM" />
+                        <ListBoxItem Content="2012-6-0 12:22  4KM" />
+                    </ListBox>
+                </Grid>
+            </controls:PivotItem>
+        </controls:Pivot>
+
+    </Grid>
+    <phone:PhoneApplicationPage.Resources>
+        <shell:ApplicationBar x:Key="ApplicationBar_Track" IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBarIconButton IconUri="/Images/appbar.play.png" Text="Start" Click="TrackButton_Click" />
+            <shell:ApplicationBarIconButton IconUri="/Images/appbar.disk.download.png" Text="Download" IsEnabled="False" Click="DownloadButton_Click"/>
+            <shell:ApplicationBar.MenuItems>
+            </shell:ApplicationBar.MenuItems>
+        </shell:ApplicationBar>
+        <shell:ApplicationBar x:Key="ApplicationBar_History" IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBar.MenuItems>
+            </shell:ApplicationBar.MenuItems>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.Resources>
+</phone:PhoneApplicationPage>
+
+
