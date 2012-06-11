@@ -1,0 +1,29 @@
+Info
+Updated August 23, 2011 at 12:02am
+
+General
+- design/  - Source
+- xaml/    - Vector Canvas
+- light/   - Black Icons
+- dark/    - White Icons
+
+How to get an icon added. Mention @Templarian on Twitter,
+wait a few hours for a screenshot of new icon. At this
+time it should have already been included in the zip.
+
+Icons
+- Phone
+- Remote
+- Notepad
+  - Open
+- Emoticons
+  - Smile
+  - Sad
+- Shapes (place mini circles / squares on points)
+  - Rectangle
+  - Square
+- Numbers?
+- Image
+- Painting
+- Suitcase
+- ID / Badge

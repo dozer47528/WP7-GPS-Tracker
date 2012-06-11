@@ -1,0 +1,17 @@
+Read the license the link below:
+http://creativecommons.org/licenses/by/3.0/
+
+Basicaly, use it anyway you want but include this
+license file into the source somewhere. Nothing is
+needed in the front facing project. Commercial use
+is not only allowed but encouraged. This pack was
+made to promote consistency in applications.
+
+
+Authors*
+- None so far
+
+
+* Developers and designers that emailed Templarian
+  source .design icons to be added into the package.
+  http://templarian.com/ admin@templarian.com

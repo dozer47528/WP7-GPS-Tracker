@@ -8,12 +8,16 @@ using System.IO.IsolatedStorage;
 using System.IO;
 using System.Text;
 using Gpx;
+using Service;
 
 namespace Schedule
 {
     public class ScheduledAgent : ScheduledTaskAgent
     {
         private static volatile bool _classInitialized;
+
+        private FileService fileService;
+        protected FileService FileService { get { return fileService ?? (fileService = new FileService()); } }
 
         /// <remarks>
         /// ScheduledAgent 构造函数，初始化 UnhandledException 处理程序
@@ -55,64 +59,10 @@ namespace Schedule
         {
             if (task.Name == PERIODICTASKNAME)
             {
-
                 GeoCoordinateWatcher watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.Default);
                 watcher.Start();
 
-                var count = 0;
-                bool firstRun = true;
-                IsolatedStorageFile isStore = IsolatedStorageFile.GetUserStoreForApplication();
-                if (isStore.FileExists("record.gpx.temp"))
-                {
-                    isStore.DeleteFile("record.gpx.temp");
-                }
-                if (isStore.FileExists("record.gpx"))
-                {
-                    firstRun = false;
-                    isStore.MoveFile("record.gpx", "record.gpx.temp");
-                }
-
-
-                IsolatedStorageFileStream input = new IsolatedStorageFileStream("record.gpx.temp", System.IO.FileMode.OpenOrCreate, FileAccess.Read, isStore);
-                IsolatedStorageFileStream output = new IsolatedStorageFileStream("record.gpx", System.IO.FileMode.OpenOrCreate, FileAccess.Write, isStore);
-
-
-                using (GpxWriter writer = new GpxWriter(output))
-                {
-                    GpxWayPoint last = null;
-                    if (!firstRun)
-                    {
-                        using (GpxReader reader = new GpxReader(input))
-                        {
-                            while (reader.Read())
-                            {
-                                switch (reader.ObjectType)
-                                {
-                                    case GpxObjectType.WayPoint:
-                                        count++;
-                                        writer.WriteWayPoint(reader.WayPoint);
-                                        last = reader.WayPoint;
-                                        break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (last == null || last.Time.ToString() != watcher.Position.Timestamp.UtcDateTime.ToString())
-                    {
-                        writer.WriteWayPoint(new GpxWayPoint
-                            {
-                                Latitude = watcher.Position.Location.Latitude,
-                                Longitude = watcher.Position.Location.Longitude,
-                                Elevation = watcher.Position.Location.Altitude,
-                                Time = watcher.Position.Timestamp.UtcDateTime,
-                            });
-                        count++;
-                    }
-                }
-
-
-
+                var count = FileService.SaveFile(watcher);
 
                 ShellTile firstTile = ShellTile.ActiveTiles.First();
                 var newData = new StandardTileData()
@@ -130,6 +80,8 @@ namespace Schedule
             NotifyComplete();
         }
 
+
+
         public static bool CheckTask()
         {
             PeriodicTask tskPeriodic;
@@ -143,23 +95,16 @@ namespace Schedule
         }
         public static void StartPeriodicTask()
         {
-            PeriodicTask tskPeriodic;
-            ScheduledAction tTask = ScheduledActionService.Find(PERIODICTASKNAME);
-            if (tTask != null)
+            if (ScheduledActionService.Find(PERIODICTASKNAME) != null)
             {
-                tskPeriodic = tTask as PeriodicTask;
-            }
-            else
-            {
-                tskPeriodic = new PeriodicTask(PERIODICTASKNAME);
-                tskPeriodic.Description = "GPS Tracker";
+                ScheduledActionService.Remove(PERIODICTASKNAME);
             }
 
-            if (!tskPeriodic.IsScheduled)
-            {
-                ScheduledActionService.Add(tskPeriodic);
-                ScheduledActionService.LaunchForTest(PERIODICTASKNAME, TimeSpan.FromSeconds(1));
-            }
+            var tskPeriodic = new PeriodicTask(PERIODICTASKNAME);
+            tskPeriodic.Description = "GPS Tracker";
+
+            ScheduledActionService.Add(tskPeriodic);
+            ScheduledActionService.LaunchForTest(PERIODICTASKNAME, TimeSpan.FromSeconds(1));
 
             ShellTile firstTile = ShellTile.ActiveTiles.First();
             var newData = new StandardTileData()
