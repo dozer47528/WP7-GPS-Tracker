@@ -15,6 +15,7 @@ namespace Schedule
     public class ScheduledAgent : ScheduledTaskAgent
     {
         private static volatile bool _classInitialized;
+        public const string PERIODICTASK_NAME = "GPS Tracker";
 
         private FileService fileService;
         protected FileService FileService { get { return fileService ?? (fileService = new FileService()); } }
@@ -45,7 +46,6 @@ namespace Schedule
             }
         }
 
-        public static string PERIODICTASKNAME = "GPS Tracker";
         /// <summary>
         /// 运行计划任务的代理
         /// </summary>
@@ -57,74 +57,18 @@ namespace Schedule
         /// </remarks>
         protected override void OnInvoke(ScheduledTask task)
         {
-            if (task.Name == PERIODICTASKNAME)
+            if (IsolatedStorageSettings.ApplicationSettings.Contains("IsLocating"))
             {
-                GeoCoordinateWatcher watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.Default);
-                watcher.Start();
-
-                var count = FileService.SaveFile(watcher);
-
-                ShellTile firstTile = ShellTile.ActiveTiles.First();
-                var newData = new StandardTileData()
-                {
-                    Title = "Running...",
-                    BackgroundImage = new Uri("background.png", UriKind.Relative),
-                    Count = count,
-                    BackBackgroundImage = new Uri("background.png", UriKind.Relative),
-                    BackTitle = watcher.Position.Timestamp.ToString(),
-                    BackContent = watcher.Position.Location.Latitude + " " + watcher.Position.Location.Longitude
-                };
-                firstTile.Update(newData);
+                var isLocating = (bool)IsolatedStorageSettings.ApplicationSettings["IsLocating"];
+                if (isLocating) return;
             }
-            ScheduledActionService.LaunchForTest(PERIODICTASKNAME, TimeSpan.FromSeconds(300));
+            if (task.Name == PERIODICTASK_NAME)
+            {
+                var count = FileService.SaveFile();
+                ShellTileService.Start(count);
+            }
+            ScheduledActionService.LaunchForTest(PERIODICTASK_NAME, TimeSpan.FromSeconds(300));
             NotifyComplete();
-        }
-
-
-
-        public static bool CheckTask()
-        {
-            PeriodicTask tskPeriodic;
-            ScheduledAction tTask = ScheduledActionService.Find(PERIODICTASKNAME);
-            if (tTask == null) return false;
-
-            tskPeriodic = tTask as PeriodicTask;
-            if (tskPeriodic == null) return false;
-
-            return tskPeriodic.IsScheduled;
-        }
-        public static void StartPeriodicTask()
-        {
-            if (ScheduledActionService.Find(PERIODICTASKNAME) != null)
-            {
-                ScheduledActionService.Remove(PERIODICTASKNAME);
-            }
-
-            var tskPeriodic = new PeriodicTask(PERIODICTASKNAME);
-            tskPeriodic.Description = "GPS Tracker";
-
-            ScheduledActionService.Add(tskPeriodic);
-            ScheduledActionService.LaunchForTest(PERIODICTASKNAME, TimeSpan.FromSeconds(1));
-
-            ShellTile firstTile = ShellTile.ActiveTiles.First();
-            var newData = new StandardTileData()
-            {
-                Title = "Running...",
-                BackgroundImage = new Uri("background.png", UriKind.Relative),
-            };
-            firstTile.Update(newData);
-        }
-        public static void StopPeriodicTask()
-        {
-            ScheduledActionService.Remove(PERIODICTASKNAME);
-
-            ShellTile firstTile = ShellTile.ActiveTiles.First();
-            var newData = new StandardTileData()
-            {
-                Title = "Not Running",
-                BackgroundImage = new Uri("background.png", UriKind.Relative),
-            };
-            firstTile.Update(newData);
         }
     }
 }

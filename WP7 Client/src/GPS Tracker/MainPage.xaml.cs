@@ -1,23 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Device.Location;
+using System.IO.IsolatedStorage;
 using System.Linq;
-using System.Net;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using Microsoft.Phone.Controls;
+using Microsoft.Phone.Controls.Maps;
+using Microsoft.Phone.Scheduler;
 using Microsoft.Phone.Shell;
-using System.IO.IsolatedStorage;
-using System.IO;
-using System.Text;
-using WindowsPhonePostClient;
 using Microsoft.Phone.Tasks;
-using Schedule;
 using Service;
+using Coding4Fun.Phone.Controls;
 
 namespace GPS_Tracker
 {
@@ -25,6 +18,8 @@ namespace GPS_Tracker
     {
         private FileService fileService;
         protected FileService FileService { get { return fileService ?? (fileService = new FileService()); } }
+        protected readonly GeoCoordinateWatcher Watcher = new GeoCoordinateWatcher();
+
         protected ApplicationBar ApplicationBar_Track
         {
             get
@@ -52,15 +47,54 @@ namespace GPS_Tracker
                 appBarName = "ApplicationBar_History";
                 LoadHistory();
             }
+            else if (e.Item == TrackPivotItem)
+            {
+                appBarName = "ApplicationBar_Track";
+                LoadPoints();
+            }
 
 
             var appBar = Resources[appBarName] as ApplicationBar;
             if (appBar == null) return;
             ApplicationBar = appBar;
         }
+
+        private bool HasSetLocation = false;
+        private void LoadPoints()
+        {
+            TrackMap.Children.Clear();
+            if (ScheduledService.IsRunning)
+            {
+                var points = FileService.GetPoints();
+                foreach (var p in points)
+                {
+                    if (double.IsNaN(p.Longitude) || double.IsNaN(p.Latitude)) continue;
+                    TrackMap.Children.Add(new Pushpin
+                    {
+                        Name = Guid.NewGuid().ToString(),
+                        Location = new GeoCoordinate(p.Latitude, p.Longitude),
+                        Content = p.Time.ToLocalTime().ToString("HH:mm")
+                    });
+                }
+            }
+
+            if (HasSetLocation) return;
+            if (TrackMap.Children.Count == 0)
+            {
+                TrackMap.SetView(Watcher.Position.Location, TrackMap.ZoomLevel);
+            }
+            else
+            {
+                var last = TrackMap.Children.Last() as Pushpin;
+                TrackMap.SetView(last.Location, TrackMap.ZoomLevel);
+            }
+            HasSetLocation = true;
+        }
+
         private void PhoneApplicationPage_Loaded(object sender, RoutedEventArgs e)
         {
             InitButton();
+            Watcher.Start();
         }
         private void LoadHistory()
         {
@@ -102,6 +136,11 @@ namespace GPS_Tracker
         private void DownloadStringCompleted(object sender, WindowsPhonePostClient.DownloadStringCompletedEventArgs e)
         {
             ProgressBar_Downloading.Visibility = Visibility.Collapsed;
+            if (e.Error != null)
+            {
+                Toast("Download Error!", "Pleace check your network or try it again!");
+                return;
+            }
             EmailComposeTask mail = new EmailComposeTask();
             mail.Subject = string.Concat(DateTime.Now.ToString("[yyyy-MM-dd hh:mm]"), "Download the GPX File!");
             mail.Body = e.Result;
@@ -110,7 +149,7 @@ namespace GPS_Tracker
         private void InitButton()
         {
             var button = ApplicationBar_Track.Buttons[0] as ApplicationBarIconButton;
-            if (ScheduledAgent.CheckTask())
+            if (ScheduledService.IsRunning)
             {
                 InitStopButton(button);
             }
@@ -141,23 +180,67 @@ namespace GPS_Tracker
                     IsolatedStorageSettings.ApplicationSettings["Index"] = index;
                 }
                 IsolatedStorageSettings.ApplicationSettings.Save();
-                ScheduledAgent.StartPeriodicTask();
+
+                var task = ScheduledService.StartPeriodicTask();
+                ScheduledActionService.Add(task);
+                ScheduledActionService.LaunchForTest(ScheduledService.PERIODICTASK_NAME, TimeSpan.FromSeconds(1));
             }
             else
             {
                 InitStartButton(button);
-                ScheduledAgent.StopPeriodicTask();
+                ScheduledService.StopPeriodicTask();
             }
         }
         private void InitStartButton(ApplicationBarIconButton button)
         {
             button.Text = "Start";
             button.IconUri = new Uri("/Images/appbar.play.png", UriKind.Relative);
+            (ApplicationBar_Track.Buttons[1] as ApplicationBarIconButton).IsEnabled = false;
         }
         private void InitStopButton(ApplicationBarIconButton button)
         {
             button.Text = "Stop";
             button.IconUri = new Uri("/Images/appbar.pause.png", UriKind.Relative);
+            (ApplicationBar_Track.Buttons[1] as ApplicationBarIconButton).IsEnabled = true;
+        }
+        private void AddManually_Click(object sender, EventArgs e)
+        {
+            if (double.IsNaN(Watcher.Position.Location.Longitude) || double.IsNaN(Watcher.Position.Location.Latitude))
+            {
+                Toast("GPS not ready!");
+                return;
+            }
+
+            if (IsolatedStorageSettings.ApplicationSettings.Contains("LastLocation"))
+            {
+                var point = IsolatedStorageSettings.ApplicationSettings["LastLocation"] as Gpx.GpxWayPoint;
+                if (point != null && point.Time.ToString() == Watcher.Position.Timestamp.UtcDateTime.ToString())
+                {
+                    Toast("No new position!");
+                    return;
+                }
+            }
+
+            IsolatedStorageSettings.ApplicationSettings["IsLocating"] = true;
+            IsolatedStorageSettings.ApplicationSettings.Save();
+
+            var count = FileService.SaveFile(Watcher.Position);
+
+            IsolatedStorageSettings.ApplicationSettings["IsLocating"] = false;
+            IsolatedStorageSettings.ApplicationSettings.Save();
+
+            ShellTileService.Start(count);
+            LoadPoints();
+
+            Toast("Success!");
+        }
+
+        protected void Toast(string title, string message = null)
+        {
+            ToastPrompt toast = new ToastPrompt();
+            toast.Title = title;
+            if (!string.IsNullOrEmpty(message)) toast.Message = message;
+            toast.Show();
         }
     }
 }
