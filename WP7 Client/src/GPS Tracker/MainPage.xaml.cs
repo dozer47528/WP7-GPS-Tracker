@@ -184,6 +184,7 @@ namespace GPS_Tracker
                 var task = ScheduledService.StartPeriodicTask();
                 ScheduledActionService.Add(task);
                 ScheduledActionService.LaunchForTest(ScheduledService.PERIODICTASK_NAME, TimeSpan.FromSeconds(1));
+                LoadPoints();
             }
             else
             {
