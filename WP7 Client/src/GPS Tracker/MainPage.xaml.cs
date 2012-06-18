@@ -11,11 +11,23 @@ using Microsoft.Phone.Shell;
 using Microsoft.Phone.Tasks;
 using Service;
 using Coding4Fun.Phone.Controls;
+using System.ComponentModel;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Threading;
 
 namespace GPS_Tracker
 {
     public partial class MainPage : PhoneApplicationPage
     {
+        private BackgroundWorker Worker = new BackgroundWorker();
+        private ImageSource[] TowerImages = new ImageSource[]{
+            (ImageSource)new ImageSourceConverter().ConvertFromString("/Images/tower0.png"),
+            (ImageSource)new ImageSourceConverter().ConvertFromString("/Images/tower1.png"),
+            (ImageSource)new ImageSourceConverter().ConvertFromString("/Images/tower2.png")};
+        private int TowerImageIndex = 0;
+
+
         private FileService fileService;
         protected FileService FileService { get { return fileService ?? (fileService = new FileService()); } }
         protected readonly GeoCoordinateWatcher Watcher = new GeoCoordinateWatcher();
@@ -94,7 +106,8 @@ namespace GPS_Tracker
         private void PhoneApplicationPage_Loaded(object sender, RoutedEventArgs e)
         {
             InitButton();
-            Watcher.Start();
+            InitWorker();
+            InitWatcher();
         }
         private void LoadHistory()
         {
@@ -158,6 +171,45 @@ namespace GPS_Tracker
                 InitStartButton(button);
             }
         }
+        private void InitWorker()
+        {
+            Worker.WorkerReportsProgress = true;
+            Worker.DoWork += (sender, e) =>
+            {
+                while (true)
+                {
+                    Thread.Sleep(500);
+                    var s = sender as BackgroundWorker;
+                    s.ReportProgress(0);
+                }
+            };
+            Worker.ProgressChanged += (sender, e) =>
+            {
+                Image_Tower.Source = TowerImages[TowerImageIndex];
+                TowerImageIndex++;
+                if (TowerImageIndex > 2) TowerImageIndex = 0;
+            };
+        }
+        private void InitWatcher()
+        {
+            Watcher.Start();
+            Watcher.PositionChanged += (sender, e) =>
+            {
+                if ((DateTime.Now - e.Position.Timestamp.DateTime) > new TimeSpan(0, 10, 0) ||
+                    double.IsNaN(e.Position.Location.Longitude) ||
+                    double.IsNaN(e.Position.Location.Latitude))
+                {
+                    if (Worker.IsBusy) return;
+                    Worker.RunWorkerAsync();
+                }
+                else {
+                    if (!Worker.IsBusy) return;
+                    Worker.CancelAsync();
+                    Image_Tower.Source = TowerImages[2];
+                }
+            };
+        }
+
         private void TrackButton_Click(object sender, EventArgs e)
         {
             var button = sender as ApplicationBarIconButton;

@@ -9,8 +9,7 @@
     xmlns:Microsoft_Phone_Controls_Maps="clr-namespace:Microsoft.Phone.Controls.Maps;assembly=Microsoft.Phone.Controls.Maps"
     x:Class="GPS_Tracker.MainPage"
     SupportedOrientations="Portrait" Orientation="Portrait"
-    mc:Ignorable="d" d:DesignHeight="768" d:DesignWidth="480"
-    shell:SystemTray.IsVisible="True" Loaded="PhoneApplicationPage_Loaded">
+    mc:Ignorable="d" shell:SystemTray.IsVisible="True" Loaded="PhoneApplicationPage_Loaded" d:DesignHeight="768" d:DesignWidth="480">
 
     <phone:PhoneApplicationPage.Resources>
         <shell:ApplicationBar x:Key="ApplicationBar_Track" IsVisible="True" IsMenuEnabled="True">
@@ -26,6 +25,7 @@
             <controls:PivotItem x:Name="TrackPivotItem" Header="Track">
                 <Grid>
                     <Microsoft_Phone_Controls_Maps:Map ZoomLevel="12" Name="TrackMap" Margin="0,0,0,8" CredentialsProvider="Au8J7ui1HoFnwG8J82SQUJZospyeNFlPsF-4taM4fJOVDY3UOpknep1XEIOT0sZ0" d:LayoutOverrides="Width"/>
+                    <Image Height="48" HorizontalAlignment="Left" Name="Image_Tower" Stretch="Fill" VerticalAlignment="Top" Width="48" />
                 </Grid>
             </controls:PivotItem>
             <controls:PivotItem x:Name="HistoryPivotItem" Header="History">
