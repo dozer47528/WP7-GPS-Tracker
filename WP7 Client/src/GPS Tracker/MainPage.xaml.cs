@@ -15,6 +15,7 @@ using System.ComponentModel;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace GPS_Tracker
 {
@@ -105,6 +106,7 @@ namespace GPS_Tracker
 
         private void PhoneApplicationPage_Loaded(object sender, RoutedEventArgs e)
         {
+            InitLocationNotice();
             InitButton();
             InitWorker();
             InitWatcher();
@@ -202,47 +204,86 @@ namespace GPS_Tracker
                     if (Worker.IsBusy) return;
                     Worker.RunWorkerAsync();
                 }
-                else {
-                    if (!Worker.IsBusy) return;
-                    Worker.CancelAsync();
+                else
+                {
+                    if (Worker.IsBusy)
+                    {
+                        Worker.CancelAsync();
+                    }
                     Image_Tower.Source = TowerImages[2];
                 }
             };
         }
+        private void InitLocationNotice()
+        {
+            var key = "LocationNotice";
+            if (IsolatedStorageSettings.ApplicationSettings.Contains(key)) return;
 
+            var result = MessageBox.Show("The software will record your location information.In addition, when you choose to download, the software will uploaded  your location information to server and available for download.However, these data are anonymous, and no other information, and will be automatically deleted after a certain event.", "", MessageBoxButton.OKCancel);
+            if (result == MessageBoxResult.OK)
+            {
+                IsolatedStorageSettings.ApplicationSettings.Add(key, true);
+            }
+        }
         private void TrackButton_Click(object sender, EventArgs e)
         {
             var button = sender as ApplicationBarIconButton;
             if (button.Text == "Start")
             {
                 InitStopButton(button);
+                var msg = new MessagePrompt
+                {
+                    Title = "",
+                    Message = "Do you want to continue with last track or create new one?",
+                };
 
-                var result = MessageBox.Show("OK:  yes\nCancel:  continue with last one", "Create new？", MessageBoxButton.OKCancel);
-                if (result == MessageBoxResult.OK || !IsolatedStorageSettings.ApplicationSettings.Contains("LastTime"))
+                var createButton = new Button { Content = "Create" };
+                createButton.Click += (s, args) =>
                 {
-                    IsolatedStorageSettings.ApplicationSettings["LastTime"] = DateTime.Now;
-                }
-                if (!IsolatedStorageSettings.ApplicationSettings.Contains("Index"))
+                    msg.Hide();
+                    CreateOrContinueResult(MessageBoxResult.OK);
+                };
+                var continueButton = new Button { Content = "Continue" };
+                continueButton.Click += (s, args) =>
                 {
-                    IsolatedStorageSettings.ApplicationSettings["Index"] = 0;
-                }
-                if (result == MessageBoxResult.OK)
-                {
-                    var index = (int)IsolatedStorageSettings.ApplicationSettings["Index"] + 1;
-                    IsolatedStorageSettings.ApplicationSettings["Index"] = index;
-                }
-                IsolatedStorageSettings.ApplicationSettings.Save();
+                    msg.Hide();
+                    CreateOrContinueResult(MessageBoxResult.Cancel);
+                };
 
-                var task = ScheduledService.StartPeriodicTask();
-                ScheduledActionService.Add(task);
-                ScheduledActionService.LaunchForTest(ScheduledService.PERIODICTASK_NAME, TimeSpan.FromSeconds(1));
-                LoadPoints();
+                msg.ActionPopUpButtons = new List<Button> { createButton, continueButton };
+                msg.Show();
+
+                //var result = MessageBox.Show("OK:  yes\nCancel:  continue with last one", "Create new？", MessageBoxButton.OKCancel);
+                //CreateOrContinueResult(result);
             }
             else
             {
                 InitStartButton(button);
                 ScheduledService.StopPeriodicTask();
             }
+        }
+
+        private void CreateOrContinueResult(MessageBoxResult result)
+        {
+            if (result == MessageBoxResult.OK || !IsolatedStorageSettings.ApplicationSettings.Contains("LastTime"))
+            {
+                IsolatedStorageSettings.ApplicationSettings["LastTime"] = DateTime.Now;
+            }
+            if (!IsolatedStorageSettings.ApplicationSettings.Contains("Index"))
+            {
+                IsolatedStorageSettings.ApplicationSettings["Index"] = 0;
+            }
+            if (result == MessageBoxResult.OK)
+            {
+                var index = (int)IsolatedStorageSettings.ApplicationSettings["Index"] + 1;
+                IsolatedStorageSettings.ApplicationSettings["Index"] = index;
+            }
+            IsolatedStorageSettings.ApplicationSettings.Save();
+
+            var task = ScheduledService.StartPeriodicTask();
+            ScheduledActionService.Add(task);
+            ScheduledActionService.LaunchForTest(ScheduledService.PERIODICTASK_NAME, TimeSpan.FromSeconds(1));
+            LoadPoints();
         }
         private void InitStartButton(ApplicationBarIconButton button)
         {
